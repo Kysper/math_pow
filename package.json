@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
+    "scripts": {
     "start": "npm run dev",
     "build": "vite build",
-    "dev": "vite",
+    "dev": "vite --host",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
