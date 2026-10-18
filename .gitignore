@@ -1,22 +1,18 @@
-# Dependencies
+
 node_modules/
 
-# Production build output
 dist/
 dist-ssr/
 
-# Environment files & local variables
 .env
 .env.*
 !.env.example
 
-# Logs and runtime data
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 package-lock.json?
 
-# OS generated files & Editor directories
 .DS_Store
 Thumbs.db
 .vscode/
