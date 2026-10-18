@@ -1,9 +1,9 @@
-import { defineConfig } from "vite";
+import { defineConfig } from 'vite';
 
-// https://vite.dev/config/
 export default defineConfig({
+  // This matches your repository folder name on GitHub
+  base: '/bubble-pop-math/', 
   server: {
-    port: 8080,
-    open: true,
-  },
+    host: true
+  }
 });
