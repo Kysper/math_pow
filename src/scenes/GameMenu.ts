@@ -1,9 +1,10 @@
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { Container, Graphics, Rectangle, Text, TextStyle, type FederatedPointerEvent } from "pixi.js";
 
 export class GameMenu extends Container {
   public selectedOperators: Array<'+' | '-' | '*' | '/'> = ['+'];
   // --- NEW: Tracks if strict typing accuracy is active ---
-  public isExpertMode = false; 
+  public isExpertMode = false;
+  public speedLevel = 5;
   private onStartCallback: () => void;
 
   constructor(centerX: number, centerY: number, onStart: () => void) {
@@ -14,13 +15,13 @@ export class GameMenu extends Container {
       fontFamily: 'Arial Rounded MT Bold, sans-serif',
       fontSize: 24,
       fill: '#FFFFFF',
-      stroke: { color: '#4A3E56', width: 4 }
+      stroke: { color: '#4A3E56', width: 2 }
     });
 
     const labelStyle = new TextStyle({
       fontFamily: 'Arial Rounded MT Bold, sans-serif',
       fontSize: 20,
-      fill: '#4A3E56',
+      fill: '#290350',
       fontWeight: 'bold'
     });
 
@@ -84,7 +85,7 @@ export class GameMenu extends Container {
 
     // Active toggle highlights
     const highlightG = new Graphics();
-    
+
     const drawHighlight = (isExpert: boolean) => {
       highlightG.clear();
       // Draw capsule slider on the left side for casual, right side for expert
@@ -93,8 +94,9 @@ export class GameMenu extends Container {
     drawHighlight(this.isExpertMode);
 
     const txtStyleSmall = new TextStyle({
-      fontFamily: 'Arial Rounded MT Bold, sans-serif', fontSize: 16, fill: '#FFFFFF',
-      stroke: { color: '#4A3E56', width: 3 }
+      fontFamily: 'Arial Rounded MT Bold, sans-serif', fontSize: 18, fill: '#FFFFFF',
+      stroke: { color: '#4A3E56', width: 2 },
+
     });
 
     const casualTxt = new Text({ text: "CASUAL", style: txtStyleSmall });
@@ -112,22 +114,94 @@ export class GameMenu extends Container {
     modeBtnContainer.on('pointerdown', (event) => {
       // Find where they clicked inside the button container box locally
       const localPos = modeBtnContainer.toLocal(event.global);
-      
+
       // If clicked right side, activate expert. If left side, activate casual.
       this.isExpertMode = localPos.x > 0;
       drawHighlight(this.isExpertMode);
       console.log("Expert mode status:", this.isExpertMode);
     });
 
+    const sliderContainer = new Container();
+    sliderContainer.position.set(centerX - 120, centerY + 80);
+    sliderContainer.eventMode = 'static';
+    sliderContainer.hitArea = new Rectangle(0, 0, 260, 20);
+
+    const speedSlider = new Graphics()
+      .roundRect(0, 0, 260, 20, 20)
+      .fill({ color: '#E0E0E0' })
+      .stroke({ color: '#FFFFFF', width: 3 });
+
+    const speedSliderBtn = new Graphics()
+      .roundRect(0, 0, 20, 20, 20)
+      .fill({ color: '#c400f5' })
+      .stroke({ color: '#e285e6', width: 3 });
+    speedSliderBtn.eventMode = 'static';
+    speedSliderBtn.cursor = 'pointer';
+
+    const sliderLabel = new Text({ text: '', style: labelStyle });
+    sliderLabel.anchor.set(0.5);
+    sliderLabel.position.set(130, -18);
+
+    let isDragging = false;
+    let dragOffset = 0;
+
+    const minX = 0;
+    const maxX = 240;
+
+    const updateSpeedLevel = (positionX: number) => {
+      const step = Math.round((positionX / maxX) * 19);
+      this.speedLevel = step + 1;
+      speedSliderBtn.position.x = (step / 19) * maxX;
+      sliderLabel.text = `FALL SPEED: ${this.speedLevel}/20`;
+    };
+
+    updateSpeedLevel((this.speedLevel - 1) / 19 * maxX);
+
+    const moveHandle = (event: FederatedPointerEvent) => {
+      const localX = sliderContainer.toLocal(event.global).x;
+      const positionX = Math.max(
+        minX,
+        Math.min(maxX, localX - dragOffset)
+      );
+      updateSpeedLevel(positionX);
+    };
+
+    sliderContainer.on('pointerdown', (event) => {
+      isDragging = true;
+      const localX = sliderContainer.toLocal(event.global).x;
+      dragOffset = event.target === speedSliderBtn
+        ? localX - speedSliderBtn.position.x
+        : speedSliderBtn.width / 2;
+      moveHandle(event);
+    });
+
+    sliderContainer.on('globalpointermove', (event) => {
+      if (isDragging) moveHandle(event);
+    });
+
+    sliderContainer.on('globalpointerup', () => {
+      isDragging = false;
+    });
+    sliderContainer.on('pointerupoutside', () => {
+      isDragging = false;
+    });
+
+    sliderContainer.addChild(speedSlider);
+    sliderContainer.addChild(speedSliderBtn);
+
+    sliderContainer.addChild(sliderLabel);
+
+    this.addChild(sliderContainer);
+
     // --- START GAME ACTION BUTTON ---
     const startBtn = new Container();
-    const btnBg = new Graphics().roundRect(0, 0, 260, 60, 20).fill({ color: '#70D6FF' }).stroke({ color: '#FFFFFF', width: 4 });
+    const btnBg = new Graphics().roundRect(0, 0, 260, 60, 20).fill({ color: '#70D6FF' }).stroke({ color: '#FFFFFF', width: 3 });
     const btnText = new Text({ text: 'START GAME', style: textStyle });
     btnText.anchor.set(0.5);
     btnText.position.set(130, 30);
     startBtn.addChild(btnBg, btnText);
-    startBtn.position.set(centerX - 130, centerY + 90);
-    
+    startBtn.position.set(centerX - 130, centerY + 180);
+
     startBtn.eventMode = 'static';
     startBtn.cursor = 'pointer';
     startBtn.on('pointerdown', () => this.onStartCallback());

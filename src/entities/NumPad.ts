@@ -2,7 +2,7 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 
 export class NumPad extends Container {
   private onKeyTapCallback: (digit: string) => void;
-  private btnColors = ['#FFCCD5', '#DDF2FD', '#F3CCFF', '#D8F3DC', '#C7E9B4', '#FFF9E6'];
+  private btnColors = ['#FFCCD5', '#DDF2FD', '#F3CCFF', '#D8F3DC', '#C7E9B4'];
 
   constructor(onKeyTap: (digit: string) => void) {
     super();
@@ -39,11 +39,10 @@ export class NumPad extends Container {
         keyBtn.position.set(xOffset, yOffset);
 
         const randomColor = this.btnColors[Math.floor(Math.random() * this.btnColors.length)];
-
         const bg = new Graphics()
           .circle(0, 0, btnRadius)
           .fill({ color: randomColor })
-          .stroke({ color: '#FFFFFF', width: 2.5 });
+          .stroke({ color: '#4A3E56', width: 2 });
 
         const txt = new Text({ text: digit, style: btnStyle });
         txt.anchor.set(0.5);

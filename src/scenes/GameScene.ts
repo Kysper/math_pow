@@ -8,10 +8,11 @@ export class GameScene extends Container {
         super();
     }
 
-    public spawnMathProblem(expression: string, [x, y]: [number, number]): void {
+    public spawnMathProblem(expression: string, [x, y]: [number, number], velocityY = 0.5): void {
         const block = new MathBlock(expression);
         block.x = x;
         block.y = y;
+        block.velocityY = velocityY;
 
         this.addChild(block);
         this.mathBlocks.push(block);

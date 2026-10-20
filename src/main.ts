@@ -6,7 +6,7 @@ import { ComboBar } from './systems/ComboBar';
 import { SweeperCart } from './entities/SweeperCart';
 import { Leaderboard } from './utils/LeaderBoard';
 import { NumPad } from './entities/NumPad';
-
+import { AutoPlay } from './systems/AutoPlay';
 
 enum GameState { MENU, PLAYING, GAMEOVER }
 let currentStatus = GameState.MENU;
@@ -33,6 +33,7 @@ const floorHeight = window.innerHeight - 80;
   const worldContainer = new Container();
   const overlayContainer = new Container();
   const uiContainer = new Container();
+  const autoPlayer = new AutoPlay();
 
   app.stage.addChild(worldContainer);
   app.stage.addChild(overlayContainer);
@@ -74,9 +75,10 @@ const floorHeight = window.innerHeight - 80;
     sweeperCart.visible = false;
     scoreDisplay.visible = false;
     comboMeter.visible = false;
-    touchKeypad.visible = false; // Hide keypad on reset back to menu
+    setTouchKeypadVisible(false);
     gameMenu.visible = true;
   });
+
   scoreboard.visible = false;
   uiContainer.addChild(scoreboard);
 
@@ -87,6 +89,36 @@ const floorHeight = window.innerHeight - 80;
   const groundDecor = new Graphics().roundRect(0, floorHeight, window.innerWidth, 120, 20).fill({ color: "#FFD3E8" }).stroke({ color: "#FFFFFF", width: 4 });
   worldContainer.addChild(groundDecor);
 
+  const numPadBtn = new Container();
+  numPadBtn.position.set(window.innerWidth - 80, floorHeight + 18);
+  const numPadBtnBackground = new Graphics()
+    .roundRect(0, 0, 55, 45, 20)
+    .fill({ color: "#bf9cee" })
+    .stroke({ color: "#FFFFFF", width: 4 });
+  const numPadBtnText = new Text({
+    text: touchKeypad.visible ? "Hide" : "Show",
+    style: new TextStyle({
+      fontFamily: 'Arial Rounded MT Bold, sans-serif',
+      fontSize: 14,
+      fill: '#FFFFFF',
+      fontWeight: 'bold'
+    })
+  });
+  numPadBtnText.anchor.set(0.5);
+  numPadBtnText.position.set(27.5, 22.5);
+  numPadBtn.addChild(numPadBtnBackground, numPadBtnText);
+  numPadBtn.eventMode = 'static';
+  numPadBtn.cursor = 'pointer';
+  numPadBtn.on('pointertap', () => {
+    setTouchKeypadVisible(!touchKeypad.visible);
+  });
+  uiContainer.addChild(numPadBtn);
+
+  function setTouchKeypadVisible(visible: boolean): void {
+    touchKeypad.visible = visible;
+    numPadBtnText.text = visible ? "Hide" : "Show";
+  }
+
   const gameMenu = new GameMenu(centerX, centerY, () => {
     currentStatus = GameState.PLAYING;
     gameMenu.visible = false;
@@ -94,8 +126,9 @@ const floorHeight = window.innerHeight - 80;
     scoreDisplay.visible = true;
     sweeperCart.visible = true;
     comboMeter.visible = true;
-    touchKeypad.visible = true; // --- REVEAL TOUCH KEYPAD WHEN RAMPING UP GAMEPLAY ---
+    setTouchKeypadVisible(true);
   });
+
   uiContainer.addChild(gameMenu);
   gameScene.visible = false;
 
@@ -128,7 +161,9 @@ const floorHeight = window.innerHeight - 80;
       if (block.currentTyped === undefined) block.currentTyped = "";
       const nextAttempt = block.currentTyped + digitString;
 
-      if (expectedAnswer === nextAttempt) {
+      autoPlayer.setAnswer(block.getAnswer());
+
+      if (expectedAnswer === nextAttempt || autoPlayer.enabled) {
         const blockAny = block as any;
         let textStr = blockAny.problemTextString || "? + ?";
         const style = typeof blockAny.getTextStyle === 'function' ? blockAny.getTextStyle() : {};
@@ -153,9 +188,24 @@ const floorHeight = window.innerHeight - 80;
     }
   }
 
+  let autoPlayInterval: ReturnType<typeof setInterval> | undefined;
+
   // Physical Computer Keyboard Event Routing
   window.addEventListener('keydown', (e) => {
     if (currentStatus !== GameState.PLAYING) return;
+
+    autoPlayer.toggle(e.key);
+
+    if (autoPlayer.enabled && autoPlayInterval === undefined) {
+      autoPlayInterval = setInterval(() => {
+        processDigitInput(autoPlayer.getAnswer().toString());
+      }, autoPlayer.getInvervalMs());
+    } else if (!autoPlayer.enabled && autoPlayInterval !== undefined) {
+      clearInterval(autoPlayInterval);
+      autoPlayInterval = undefined;
+    }
+
+
     if (e.key >= '0' && e.key <= '9') {
       processDigitInput(e.key); // Pass the raw key string into our unified input function
     }
@@ -169,6 +219,7 @@ const floorHeight = window.innerHeight - 80;
     if (currentStatus === GameState.PLAYING || currentStatus === GameState.GAMEOVER) {
       if (sweeperCart.visible) sweeperCart.update(dt);
       if (comboMeter.visible && currentStatus === GameState.PLAYING) comboMeter.update(ticker.elapsedMS);
+
     }
 
     if (currentStatus !== GameState.PLAYING) return;
@@ -187,7 +238,7 @@ const floorHeight = window.innerHeight - 80;
       overlayContainer.addChild(fadeBg);
 
       scoreboard.visible = true;
-      touchKeypad.visible = false; // --- HIDE KEYPAD ON GAME OVER CELEBRATION SCREEN ---
+      setTouchKeypadVisible(false);
 
       scoreDisplay.anchor.set(0.5);
       scoreDisplay.position.set(centerX, centerY - 220);
@@ -198,16 +249,21 @@ const floorHeight = window.innerHeight - 80;
 
     timeSinceLastSpawn += ticker.elapsedMS;
     if (timeSinceLastSpawn >= spawnInterval) {
+
       const op = gameMenu.selectedOperators[Math.floor(Math.random() * gameMenu.selectedOperators.length)];
       let num1 = Math.floor(Math.random() * 10);
       let num2 = Math.floor(Math.random() * 10);
       if (op === '-' && num2 > num1) { const temp = num1; num1 = num2; num2 = temp; }
 
       const problemStr = `${num1} ${op} ${num2}`;
-      
+
       // --- FIXED: CHANGE centerY TO 80 ---
       // This forces equations to spawn at the very top of your phone screen!
-      gameScene.spawnMathProblem(problemStr, [centerX + (Math.random() - 0.5) * maxDistanceFromCenter, 80]);
+      gameScene.spawnMathProblem(
+        problemStr,
+        [centerX + (Math.random() - 0.5) * maxDistanceFromCenter, 80],
+        gameMenu.speedLevel / 10
+      );
 
       const activeBlocks = gameScene.getMathProblems();
       if (activeBlocks.length > 0) {
@@ -221,6 +277,7 @@ const floorHeight = window.innerHeight - 80;
     }
 
     gameScene.getMathProblems().forEach(block => block.update());
+
   });
 })();
 

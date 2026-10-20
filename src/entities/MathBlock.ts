@@ -50,7 +50,8 @@ export class MathBlock extends Container {
             case '*':
                 return parseFloat(num1) * parseFloat(num2);
             case '/':
-                return parseFloat(num1) / parseFloat(num2);
+               return (parseFloat(num1) == 0 || parseFloat(num2) == 0) ? 0 : parseFloat(num1) / parseFloat(num2);
+              
             default:
                 return 0;
         }
